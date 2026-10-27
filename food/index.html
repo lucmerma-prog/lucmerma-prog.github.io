@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Luc's Food List</title>
+<style>
+/* Layout: one narrow column, phone-first; sticky header with tabs; checklist rows big enough for a thumb. */
+:root {
+  --bg: #f3f5f1;
+  --surface: #ffffff;
+  --fg: #1d2620;
+  --muted: #5d6b61;
+  --line: #d8ded6;
+  --accent: #2f6b46;      /* basil */
+  --accent-soft: #e2ede5;
+  --warn: #9a5b12;
+  --warn-soft: #f6ead9;
+  --font-display: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-body: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121714; --surface: #1a211c; --fg: #e6ece7; --muted: #9aa89e;
+    --line: #2c372f; --accent: #7cc497; --accent-soft: #213027;
+    --warn: #e2a35a; --warn-soft: #33281a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121714; --surface: #1a211c; --fg: #e6ece7; --muted: #9aa89e;
+  --line: #2c372f; --accent: #7cc497; --accent-soft: #213027;
+  --warn: #e2a35a; --warn-soft: #33281a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.45;
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg);
+}
+.wrap {
+  max-width: 560px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+header {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); padding-block: 14px 10px;
+  border-bottom: 1px solid var(--line);
+}
+h1 {
+  font-family: var(--font-display); font-weight: 800; font-size: 1.6rem;
+  letter-spacing: -0.01em; margin: 0 0 2px; text-wrap: balance;
+}
+.rule { margin: 0; color: var(--muted); font-size: 0.95rem; }
+.rule b { color: var(--accent); }
+nav { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+nav button {
+  font: inherit; font-weight: 700; font-size: 0.9rem;
+  padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+}
+nav button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+nav button:focus-visible, .item:focus-within, .reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+section { display: grid; gap: 22px; padding-top: 18px; }
+h2 {
+  font-family: var(--font-display); font-weight: 600; font-size: 0.8rem;
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+  margin: 0 0 8px;
+}
+ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.item {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 11px 12px; cursor: pointer;
+}
+.item input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
+.item span { min-width: 0; }
+.item small { display: block; color: var(--muted); font-size: 0.85rem; }
+.item:has(input:checked) { background: var(--accent-soft); }
+.item:has(input:checked) > span > strong { text-decoration: line-through; text-decoration-color: var(--muted); }
+.callout {
+  border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px;
+  background: var(--accent-soft); border: 1px solid var(--line);
+}
+.callout.warn { background: var(--warn-soft); }
+.callout strong { font-family: var(--font-display); font-size: 1.05rem; }
+.callout.warn strong { color: var(--warn); }
+.callout p { margin: 0; }
+.clock { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: baseline; }
+.clock time {
+  font-family: var(--font-display); font-weight: 800; font-size: 1.3rem;
+  font-variant-numeric: tabular-nums; color: var(--accent);
+}
+.no { display: flex; flex-wrap: wrap; gap: 6px; }
+.no span {
+  font-size: 0.85rem; padding: 4px 10px; border-radius: 999px;
+  border: 1px dashed var(--line); color: var(--muted); text-decoration: line-through;
+}
+.reset {
+  justify-self: start; font: inherit; font-weight: 700; font-size: 0.9rem;
+  padding: 8px 14px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+}
+@media (prefers-reduced-motion: no-preference) { .item { transition: background .15s; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Luc's Food List</h1>
+    <p class="rule">One rule: <b>only buy what's on this list.</b></p>
+  </header>
+
+  <section id="shop" role="region">
+    <div>
+      <h2>Breakfast</h2>
+      <ul>
+        <li><label class="item"><input type="checkbox" id="c-bread"><span><strong>Wholegrain bread</strong><small>Shortest ingredient list, with bakkerszout (iodine). No sourdough (zuurdesem).</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-butter"><span><strong>Butter</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-eggs"><span><strong>Eggs, 15–20</strong><small>Boil 6–8 on Sunday. Shell on, good for a week.</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-spread"><span><strong>Zuivelspread</strong><small>Naturel or bieslook. Not tomato, olive or truffle.</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-cucumber"><span><strong>Cucumber</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-honey"><span><strong>Honey</strong><small>Lasts weeks.</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-oats"><span><strong>Oats</strong><small>Optional breakfast swap.</small></span></label></li>
+      </ul>
+    </div>
+    <div>
+      <h2>Protein</h2>
+      <ul>
+        <li><label class="item"><input type="checkbox" id="c-chicken"><span><strong>Chicken, 500–700 g</strong><small>For 2–3 days. Buy fresh again mid-week.</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-gehakt"><span><strong>Fresh gehakt, 500 g</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-fish"><span><strong>Frozen salmon or cod</strong><small>Straight from freezer into the pan. Salmon at least 1x a week.</small></span></label></li>
+      </ul>
+    </div>
+    <div>
+      <h2>Starch</h2>
+      <ul>
+        <li><label class="item"><input type="checkbox" id="c-rice"><span><strong>Rice</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-potatoes"><span><strong>Potatoes</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-pasta"><span><strong>Pasta</strong></span></label></li>
+      </ul>
+    </div>
+    <div>
+      <h2>Veg</h2>
+      <ul>
+        <li><label class="item"><input type="checkbox" id="c-broccoli"><span><strong>Broccoli</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-courgette"><span><strong>Courgette</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-carrots"><span><strong>Carrots</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-peppers"><span><strong>Peppers</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-beans"><span><strong>Green beans</strong><small>Frozen is fine.</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-greens"><span><strong>Leafy greens</strong><small>Andijvie, boerenkool or lettuce. Not spinach.</small></span></label></li>
+      </ul>
+    </div>
+    <div>
+      <h2>Fruit &amp; snacks</h2>
+      <ul>
+        <li><label class="item"><input type="checkbox" id="c-apples"><span><strong>Apples</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-pears"><span><strong>Pears</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-blueberries"><span><strong>Frozen blueberries</strong><small>On oats or as a snack.</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-seeds"><span><strong>Pumpkin seeds</strong><small>A handful a day.</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-popcorn"><span><strong>Popcorn kernels</strong><small>Pan, not microwave.</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-ricecakes"><span><strong>Rice cakes, plain</strong></span></label></li>
+      </ul>
+    </div>
+    <div>
+      <h2>Drinks</h2>
+      <ul>
+        <li><label class="item"><input type="checkbox" id="c-milk"><span><strong>Milk, halfvol</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-coffee"><span><strong>Instant coffee</strong><small>Own iced coffee: coffee + cold milk in a bottle.</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-tea"><span><strong>Herbal tea</strong><small>Rooibos, chamomile or peppermint. For winding down.</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-monster"><span><strong>Monster Ultra White</strong><small>Allowed. 1 a day, before 13:00.</small></span></label></li>
+      </ul>
+    </div>
+    <div>
+      <h2>Pantry</h2>
+      <ul>
+        <li><label class="item"><input type="checkbox" id="c-oil"><span><strong>Olive oil</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-garlic"><span><strong>Garlic</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-ginger"><span><strong>Fresh ginger</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="c-salt"><span><strong>Salt &amp; pepper</strong></span></label></li>
+      </ul>
+    </div>
+    <div>
+      <h2>Stays on the shelf</h2>
+      <div class="no">
+        <span>Salami</span><span>Coppa</span><span>Curry saus</span><span>Shrimp</span>
+        <span>Old / belegen cheese</span><span>Borrel snacks</span><span>Flavoured chips</span>
+        <span>Ready sauces</span><span>Sourdough</span>
+      </div>
+    </div>
+    <button class="reset" id="reset" type="button">Clear all ticks</button>
+  </section>
+
+  <section id="work" role="region"><h2 style="font-size:1rem;color:var(--fg)">Work</h2>
+    <div>
+      <h2>At work</h2>
+      <ul>
+        <li><label class="item"><input type="checkbox" id="w-tosti"><span><strong>Tosti</strong><small>Jong kaas (jong belegen if that's all). No salami. Mayo, not curry.</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="w-chicken"><span><strong>Leftover chicken in the tosti</strong><small>If you cooked double last night.</small></span></label></li>
+      </ul>
+    </div>
+    <div>
+      <h2>In the van</h2>
+      <ul>
+        <li><label class="item"><input type="checkbox" id="w-eggs"><span><strong>2 boiled eggs</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="w-fruit"><span><strong>Apple or pear</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="w-ricecakes"><span><strong>Rice cakes or a boterham</strong><small>With zuivelspread.</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="w-water"><span><strong>Water</strong></span></label></li>
+      </ul>
+    </div>
+    <div class="callout">
+      <strong>Monster allowed</strong>
+      <p>One Ultra White, before 13:00. Or your own iced coffee. Not both.</p>
+    </div>
+    <div class="callout warn">
+      <strong>Gas station = no</strong>
+      <p>Hungry + gas station is where it goes wrong. Keep something in the van.</p>
+    </div>
+  </section>
+
+  <section id="clock" role="region"><h2 style="font-size:1rem;color:var(--fg)">Clock</h2>
+    <div class="callout">
+      <div class="clock">
+        <time>13:00</time><p>Last caffeine. Monster or iced coffee before this.</p>
+        <time>19:00</time><p>Dinner. A real meal, not borrel stuff.</p>
+        <time>20:00</time><p>Kitchen closes. An apple or pear is fine after.</p>
+        <time>−30m</time><p>Wind down: herbal tea, no heavy music.</p>
+        <time>Bed</time><p>Lamp and headphones out of the room.</p>
+      </div>
+    </div>
+    <div>
+      <h2>Dinners on rotation</h2>
+      <ul>
+        <li><label class="item"><input type="checkbox" id="d-1"><span><strong>Chicken, rice, broccoli</strong><small>Olive oil, garlic, ginger. No soy sauce.</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="d-2"><span><strong>Potatoes, gehakt, green beans</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="d-3"><span><strong>Pasta, chicken, courgette</strong><small>Garlic, olive oil, a bit of mozzarella.</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="d-4"><span><strong>Omelette with peppers, potatoes</strong><small>15 minutes.</small></span></label></li>
+        <li><label class="item"><input type="checkbox" id="d-5"><span><strong>Salmon or cod, potatoes, carrots</strong></span></label></li>
+        <li><label class="item"><input type="checkbox" id="d-6"><span><strong>Boerenkool stamppot with gehakt</strong></span></label></li>
+      </ul>
+    </div>
+    <div class="callout">
+      <strong>Every day</strong>
+      <p>Veg ~250 g (two good handfuls) · Fruit 2 pieces · Water 1.5–2 L · Dairy 2–3 portions · Pumpkin seeds a handful</p>
+    </div>
+    <div class="callout">
+      <strong>Cook for 2 days</strong>
+      <p>Two portions: one tonight, one tomorrow. Into the fridge within an hour. Tiny freezer: keep 2–3 flat bags as your Domino's backup.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var KEY = "luc-food-list-v1";
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  var boxes = document.querySelectorAll('input[type="checkbox"]');
+  boxes.forEach(function (b) {
+    if (state[b.id]) b.checked = true;
+    b.addEventListener("change", function () { state[b.id] = b.checked; save(); });
+  });
+
+  var resetBtn = document.getElementById("reset");
+  resetBtn.addEventListener("click", function () {
+    document.querySelectorAll('#shop input[type="checkbox"]').forEach(function (b) {
+      b.checked = false; state[b.id] = false;
+    });
+    save();
+    resetBtn.textContent = "Cleared";
+    setTimeout(function () { resetBtn.textContent = "Clear all ticks"; }, 1500);
+  });
+
+})();
+</script>
+
+</body>
+</html>
